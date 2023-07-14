@@ -29,9 +29,10 @@ import (
 )
 
 type v1alpha2ImageService struct {
-	imageClient       api.ImageServiceClient
-	CRIConfigs        map[string]types.AuthConfig
-	OfflineCRIConfigs map[string]types.AuthConfig
+	imageClient        api.ImageServiceClient
+	CRIConfigs         map[string]types.AuthConfig
+	ProxyCRIConfigs    map[string]types.AuthConfig
+	InternalCRIConfigs map[string]types.AuthConfig
 }
 
 func ToV1Alpha2AuthConfig(c *types.AuthConfig) *api.AuthConfig {
@@ -64,7 +65,7 @@ func (s *v1alpha2ImageService) ImageStatus(ctx context.Context,
 		if id, _ := s.GetImageRefByID(ctx, req.Image.Image); id != "" {
 			req.Image.Image = id
 		} else {
-			req.Image.Image, _, _ = replaceImage(req.Image.Image, "ImageStatus", s.OfflineCRIConfigs)
+			req.Image.Image, _, _ = replaceImage(req.Image.Image, "ImageStatus", s.InternalCRIConfigs)
 		}
 	}
 	rsp, err := s.imageClient.ImageStatus(ctx, req)
@@ -79,11 +80,11 @@ func (s *v1alpha2ImageService) ImageStatus(ctx context.Context,
 func (s *v1alpha2ImageService) PullImage(ctx context.Context,
 	req *api.PullImageRequest) (*api.PullImageResponse, error) {
 	logger.Debug("PullImage begin: %+v", req)
-	//1. sealos.hub
-	//2. sealos login remote registry
-	//3. kubernetes secret
 	if req.Image != nil {
-		imageName, ok, auth := replaceImage(req.Image.Image, "PullImage", s.OfflineCRIConfigs)
+		imageName, ok, auth := replaceImage(req.Image.Image, "InternalImage", s.InternalCRIConfigs)
+		if !ok {
+			imageName, ok, auth = replaceImage(req.Image.Image, "PullImage", s.CRIConfigs)
+		}
 		if ok {
 			req.Auth = ToV1Alpha2AuthConfig(auth)
 		} else {
@@ -99,6 +100,16 @@ func (s *v1alpha2ImageService) PullImage(ctx context.Context,
 	logger.Debug("PullImage after: %+v", req)
 	rsp, err := s.imageClient.PullImage(ctx, req)
 	if err != nil {
+		imageName, ok, auth := replaceImage(req.Image.Image, "ProxyImage", s.ProxyCRIConfigs)
+		if ok {
+			req.Image.Image = imageName
+			req.Auth = ToV1Alpha2AuthConfig(auth)
+			rsp, err = s.imageClient.PullImage(ctx, req)
+			if err != nil {
+				return nil, err
+			}
+			return rsp, err
+		}
 		return nil, err
 	}
 
@@ -112,7 +123,7 @@ func (s *v1alpha2ImageService) RemoveImage(ctx context.Context,
 		if id, _ := s.GetImageRefByID(ctx, req.Image.Image); id != "" {
 			req.Image.Image = id
 		} else {
-			req.Image.Image, _, _ = replaceImage(req.Image.Image, "RemoveImage", s.OfflineCRIConfigs)
+			req.Image.Image, _, _ = replaceImage(req.Image.Image, "RemoveImage", s.InternalCRIConfigs)
 		}
 	}
 	rsp, err := s.imageClient.RemoveImage(ctx, req)

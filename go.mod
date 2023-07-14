@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/Masterminds/sprig/v3 v3.2.3
-	github.com/containerd/containerd v1.7.2
+	github.com/containerd/containerd v1.7.20
 	github.com/containers/buildah v1.30.0
 	github.com/containers/common v0.53.0
 	github.com/containers/image/v5 v5.25.1-0.20230605120906-abe51339f34d
@@ -23,7 +23,7 @@ require (
 	github.com/imdario/mergo v0.3.16
 	github.com/labring/image-cri-shim v0.0.0
 	github.com/labring/lvscare v0.0.0
-	github.com/labring/sreg v0.1.4
+	github.com/labring/sreg v0.1.6
 	github.com/manifoldco/promptui v0.9.0
 	github.com/modood/table v0.0.0-20220527013332-8d47e76dad33
 	github.com/onsi/ginkgo v1.16.5
@@ -170,8 +170,8 @@ require (
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/opencontainers/runc v1.1.7 // indirect
-	github.com/opencontainers/runtime-spec v1.1.0-rc.3 // indirect
+	github.com/opencontainers/runc v1.1.13 // indirect
+	github.com/opencontainers/runtime-spec v1.2.0 // indirect
 	github.com/opencontainers/runtime-tools v0.9.1-0.20230317050512-e931285f4b69 // indirect
 	github.com/opencontainers/selinux v1.11.0 // indirect
 	github.com/openshift/imagebuilder v1.2.4-0.20230309135844-a3c3f8358ca3 // indirect
@@ -264,7 +264,7 @@ replace (
 replace (
 	github.com/containers/common => github.com/containers/common v0.53.1-0.20230613173441-e1ea4d9a74e5
 	github.com/containers/storage => github.com/containers/storage v1.46.1
-	github.com/docker/docker => github.com/docker/docker v23.0.6+incompatible
+	github.com/docker/docker => github.com/docker/docker v23.0.13+incompatible
 	github.com/imdario/mergo => github.com/imdario/mergo v0.3.13
 	github.com/vishvananda/netlink => github.com/vishvananda/netlink v1.1.0
 )

@@ -31,7 +31,6 @@ import (
 	"github.com/labring/sealos/pkg/utils/file"
 	"github.com/labring/sealos/pkg/utils/logger"
 	"github.com/labring/sealos/pkg/utils/maps"
-	"github.com/labring/sealos/pkg/utils/rand"
 	stringsutil "github.com/labring/sealos/pkg/utils/strings"
 )
 
@@ -205,7 +204,12 @@ func MountClusterImages(bdah buildah.Interface, cluster *v2.Cluster, skipApp boo
 		if idx >= 0 {
 			ctrName = cluster.Status.Mounts[idx].Name
 		} else {
-			ctrName = rand.Generator(8)
+			if info.OCIv1.Config.Labels != nil &&
+				info.OCIv1.Config.Labels[v2.ImageTypeKey] == string(v2.RootfsImage) {
+				ctrName = stringsutil.K8S
+			} else {
+				ctrName = info.FromImageID.String()[:12] + "-" + info.OCIv1.Architecture
+			}
 		}
 		// recreate container anyway, this function call will remount the mount point of the image
 		// since after the host reboot, the `merged` dir will become an empty dir when we using `overlayfs` as driver

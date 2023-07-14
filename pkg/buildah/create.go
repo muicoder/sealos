@@ -17,6 +17,9 @@ package buildah
 import (
 	"context"
 	"fmt"
+	"github.com/labring/sealos/pkg/clusterfile"
+	"github.com/labring/sealos/pkg/constants"
+	"github.com/labring/sealos/pkg/utils/yaml"
 	"os"
 	"os/exec"
 
@@ -64,7 +67,7 @@ func newCreateCmd() *cobra.Command {
 		Short: "Create a cluster without running the CMD, for inspecting image",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
-			bder, err := New("")
+			bder, err := New(opts.name)
 			if err != nil {
 				return err
 			}
@@ -76,9 +79,28 @@ func newCreateCmd() *cobra.Command {
 				}
 				flagSetters = append(flagSetters, WithPlatformOption(v1.Platform{OS: oss, Architecture: arch, Variant: variant}))
 			}
-			info, err := bder.Create(opts.name, args[0], flagSetters...)
+			info, err := bder.Create(stringsutil.K8S, args[0], flagSetters...)
 			if err != nil {
 				return err
+			} else {
+				cluster, errs := clusterfile.GetClusterFromName(opts.name)
+				if errs != nil {
+					return errs
+				} else {
+					for i := range cluster.Status.Mounts {
+						if cluster.Status.Mounts[i].Name == (opts.name + "-" + stringsutil.K8S) {
+							cluster.Status.Mounts[i].Env = maps.ListToMap(info.OCIv1.Config.Env)
+							cluster.Status.Mounts[i].MountPoint = info.MountPoint
+							cluster.Status.Mounts[i].ImageName = info.FromImage
+							cluster.Status.Mounts[i].Labels = info.OCIv1.Config.Labels
+							cluster.Spec.Image[0] = cluster.Status.Mounts[i].ImageName
+							errs = yaml.MarshalYamlToFile(constants.Clusterfile(opts.name), cluster)
+							if errs != nil {
+								return errs
+							}
+						}
+					}
+				}
 			}
 
 			if len(opts.env) > 0 {

@@ -69,13 +69,14 @@ func NewShim(cfg *types.Config, auth *types.ShimAuthConfig) (Shim, error) {
 	r.client = clt
 
 	srvopts := server.Options{
-		Timeout:           cfg.Timeout.Duration,
-		Socket:            cfg.ImageShimSocket,
-		User:              -1,
-		Group:             -1,
-		Mode:              0660,
-		CRIConfigs:        auth.CRIConfigs,
-		OfflineCRIConfigs: auth.OfflineCRIConfigs,
+		Timeout:            cfg.Timeout.Duration,
+		Socket:             cfg.ImageShimSocket,
+		User:               -1,
+		Group:              -1,
+		Mode:               0660,
+		CRIConfigs:         auth.CRIConfigs,
+		ProxyCRIConfigs:    auth.ProxyCRIConfigs,
+		InternalCRIConfigs: auth.InternalCRIConfigs,
 	}
 	srv, err := server.NewServer(srvopts)
 	if err != nil {

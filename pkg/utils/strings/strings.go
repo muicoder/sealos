@@ -35,6 +35,8 @@ import (
 	"github.com/labring/sealos/pkg/utils/logger"
 )
 
+const K8S = "kubernetes"
+
 // In returns if the key is in the slice.
 func In(key string, slice []string) bool {
 	for _, s := range slice {

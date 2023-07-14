@@ -40,6 +40,7 @@ var (
 	DefaultSignaturePolicyPath         = config.DefaultSignaturePolicyPath
 	DefaultRootlessSignaturePolicyPath = "containers/policy.json"
 	DefaultGraphRoot                   = "/var/lib/containers/storage"
+	DefaultContainersFilePath          = "/etc/containers/containers.conf"
 	DefaultRegistriesFilePath          = "/etc/containers/registries.conf"
 	DefaultRootlessRegistriesFilePath  = "containers/registries.conf"
 )
@@ -81,29 +82,17 @@ func init() {
 	defaultSetters = append(defaultSetters, configSetters...)
 }
 
-const defaultPolicy = `
-{
-    "default": [
-        {
-            "type": "insecureAcceptAnything"
-        }
-    ],
-    "transports":
-        {
-            "docker-daemon":
-                {
-                    "": [{"type":"insecureAcceptAnything"}]
-                }
-        }
-}
-`
+const defaultPolicy = `{"default":[{"type":"insecureAcceptAnything"}],"transports":{"docker-daemon":{"":[{"type":"insecureAcceptAnything"}]}}}`
+const defaultContainers = `[engine]
+helper_binaries_dir = ["/usr/local/bin","/usr/bin",
+  # default paths
+  "/usr/local/libexec/podman",
+  "/usr/local/lib/podman",
+  "/usr/libexec/podman",
+  "/usr/lib/podman",
+]`
 
-const defaultRegistries = `unqualified-search-registries = ["docker.io"]
-
-[[registry]]
-prefix = "docker.io/labring"
-location = "docker.io/labring"
-`
+const defaultRegistries = `unqualified-search-registries = ["docker.io"]`
 
 const (
 	defaultRootStorageConf = `[storage]
@@ -129,6 +118,10 @@ func isRunningInContainer() bool {
 
 func setupContainerPolicy() error {
 	return writeFileIfNotExists(DefaultSignaturePolicyPath, []byte(defaultPolicy))
+}
+
+func setupContainersFile() error {
+	return writeFileIfNotExists(DefaultContainersFilePath, []byte(defaultContainers))
 }
 
 func setupRegistriesFile() error {
@@ -195,6 +188,7 @@ type Setter func() error
 
 var configSetters = []Setter{
 	setupContainerPolicy,
+	setupContainersFile,
 	setupRegistriesFile,
 	setupStorageConfigFile,
 }

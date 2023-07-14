@@ -20,7 +20,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/labring/sealos/pkg/utils/rand"
+	stringsutil "github.com/labring/sealos/pkg/utils/strings"
 
 	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -125,17 +125,22 @@ func (c *InstallProcessor) ConfirmOverrideApps(_ *v2.Cluster) error {
 
 func (c *InstallProcessor) PreProcess(cluster *v2.Cluster) error {
 	logger.Info("Executing PreProcess Pipeline in InstallProcessor")
+	ctrNames := make([]string, len(c.NewImages))
 	if err := c.Buildah.Pull(c.NewImages, buildah.WithPullPolicyOption(buildah.PullIfMissing.String())); err != nil {
 		return err
 	}
 	imageTypes := sets.NewString()
-	for _, image := range c.NewImages {
+	for i, image := range c.NewImages {
 		oci, err := c.Buildah.InspectImage(image)
 		if err != nil {
 			return err
 		}
+		ctrNames[i] = oci.FromImageID.String()[:12] + "-" + oci.OCIv1.Architecture
 		if oci.OCIv1.Config.Labels != nil {
 			imageTypes.Insert(oci.OCIv1.Config.Labels[v2.ImageTypeKey])
+			if oci.OCIv1.Config.Labels[v2.ImageTypeKey] == string(v2.RootfsImage) {
+				ctrNames[i] = stringsutil.K8S
+			}
 		} else {
 			imageTypes.Insert(string(v2.AppImage))
 		}
@@ -158,7 +163,7 @@ func (c *InstallProcessor) PreProcess(cluster *v2.Cluster) error {
 	}
 	cluster.Status.Mounts = mounts
 
-	for _, img := range c.NewImages {
+	for i, img := range c.NewImages {
 		index, mount := cluster.FindImage(img)
 		var ctrName string
 		if mount != nil {
@@ -170,7 +175,7 @@ func (c *InstallProcessor) PreProcess(cluster *v2.Cluster) error {
 				return err
 			}
 		}
-		ctrName = rand.Generator(8)
+		ctrName = ctrNames[i]
 		cluster.Spec.Image = merge(cluster.Spec.Image, img)
 		bderInfo, err := c.Buildah.Create(ctrName, img)
 		if err != nil {
