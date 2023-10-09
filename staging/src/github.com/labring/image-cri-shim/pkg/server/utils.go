@@ -81,6 +81,10 @@ func replaceImage(image, action string, authConfig map[string]types.AuthConfig) 
 	// but kubelet sometimes will invoke imageService.RemoveImage() or something else. The req.Image.Image will the original name.
 	// so we'd better tag "sealos.hub:5000/library/nginx:1.1.1" with original name "req.Image.Image" After "rsp, err := (*s.imageService).PullImage(ctx, req)".
 	//for image id] this is mistake, we should replace the image name, not the image id.
+	if len(authConfig) == 0 {
+		logger.Warn("image %s authConfig is empty, action: %s", image, action)
+		return image, false, nil
+	}
 	newImage, _, cfg, err := crane.GetImageManifestFromAuth(image, authConfig)
 	if err != nil {
 		logger.Warn("get image %s manifest error %s", newImage, err.Error())

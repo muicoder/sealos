@@ -16,6 +16,7 @@ package ipvs
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/labring/sealos/pkg/types/v1beta1"
 
@@ -26,10 +27,6 @@ import (
 
 	"github.com/labring/sealos/pkg/constants"
 	"github.com/labring/sealos/pkg/utils/hosts"
-)
-
-const (
-	LvsCareCommand = "/usr/bin/lvscare"
 )
 
 func LvsStaticPodYaml(vip string, masters []string, image, name string, options []string) (string, error) {
@@ -51,7 +48,7 @@ func LvsStaticPodYaml(vip string, masters []string, image, name string, options 
 	pod := componentPod(v1.Container{
 		Name:            name,
 		Image:           image,
-		Command:         []string{LvsCareCommand},
+		Command:         []string{constants.LvsCareCommand},
 		Args:            args,
 		ImagePullPolicy: v1.PullIfNotPresent,
 		SecurityContext: &v1.SecurityContext{Privileged: &flag},
@@ -100,6 +97,19 @@ func componentPod(container v1.Container) v1.Pod {
 				Value: ip,
 			},
 		}
+	}
+	if _, err := os.Stat(constants.LvsCareCommand); err == nil {
+		container.VolumeMounts = append(container.VolumeMounts, v1.VolumeMount{Name: "lvscare", ReadOnly: true, MountPath: constants.LvsCareCommand})
+		volumes = append(volumes,
+			v1.Volume{
+				Name: "lvscare", VolumeSource: v1.VolumeSource{
+					HostPath: &v1.HostPathVolumeSource{
+						Path: constants.LvsCareCommand,
+						Type: &hostPathType,
+					},
+				},
+			},
+		)
 	}
 	return v1.Pod{
 		TypeMeta: metav1.TypeMeta{

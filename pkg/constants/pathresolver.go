@@ -46,6 +46,7 @@ const (
 	PkiEtcdDirName              = "etcd"
 	ScriptsDirName              = "scripts"
 	StaticsDirName              = "statics"
+	LvsCareCommand              = "/usr/bin/lvscare"
 )
 
 func GetHomeDir() string {
@@ -118,6 +119,11 @@ type defaultPathResolver struct {
 }
 
 func (d *defaultPathResolver) RootFSSealctlPath() string {
+	filePath, _ := filepath.Split(LvsCareCommand)
+	fileName := filepath.Join(filePath, "sealctl")
+	if _, err := os.Stat(fileName); err == nil {
+		return fileName
+	}
 	return filepath.Join(d.RootFSPath(), "opt", "sealctl")
 }
 

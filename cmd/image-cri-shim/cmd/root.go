@@ -72,7 +72,7 @@ func init() {
 }
 
 func run(cfg *types.Config, auth *types.ShimAuthConfig) {
-	logger.Info("socket info shim: %v ,image: %v, registry: %v", cfg.ImageShimSocket, cfg.RuntimeSocket, cfg.Address)
+	logger.Info("socket info shim: %v ,cri: %v, registry: %v", cfg.ImageShimSocket, cfg.RuntimeSocket, cfg.Address)
 	imgShim, err := shim.NewShim(cfg, auth)
 	if err != nil {
 		logger.Fatal("failed to new image_shim, %s", err)

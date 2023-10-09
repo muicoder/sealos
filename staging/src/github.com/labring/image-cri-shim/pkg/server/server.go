@@ -45,6 +45,7 @@ type Options struct {
 	Mode os.FileMode
 	//CRIConfigs is cri config for auth
 	CRIConfigs        map[string]dockertype.AuthConfig
+	ProxyCRIConfigs   map[string]dockertype.AuthConfig
 	OfflineCRIConfigs map[string]dockertype.AuthConfig
 }
 
@@ -80,15 +81,17 @@ func (s *server) RegisterImageService(conn *grpc.ClientConn) error {
 		return err
 	}
 
-	k8sv1api.RegisterImageServiceServer(s.server, &v1ImageService{
+	k8sv1api.RegisterImageServiceServer(s.server, &ImageService{
 		imageClient:       s.imageV1Client,
 		CRIConfigs:        s.options.CRIConfigs,
+		ProxyCRIConfigs:   s.options.ProxyCRIConfigs,
 		OfflineCRIConfigs: s.options.OfflineCRIConfigs,
 	})
 
-	k8sv1alpha2api.RegisterImageServiceServer(s.server, &v1alpha2ImageService{
+	k8sv1alpha2api.RegisterImageServiceServer(s.server, &imageService{
 		imageClient:       s.imageV1Alpha2Client,
 		CRIConfigs:        s.options.CRIConfigs,
+		ProxyCRIConfigs:   s.options.ProxyCRIConfigs,
 		OfflineCRIConfigs: s.options.OfflineCRIConfigs,
 	})
 

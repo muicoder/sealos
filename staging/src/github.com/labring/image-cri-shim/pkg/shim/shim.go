@@ -75,6 +75,7 @@ func NewShim(cfg *types.Config, auth *types.ShimAuthConfig) (Shim, error) {
 		Group:             -1,
 		Mode:              0660,
 		CRIConfigs:        auth.CRIConfigs,
+		ProxyCRIConfigs:   auth.ProxyCRIConfigs,
 		OfflineCRIConfigs: auth.OfflineCRIConfigs,
 	}
 	srv, err := server.NewServer(srvopts)

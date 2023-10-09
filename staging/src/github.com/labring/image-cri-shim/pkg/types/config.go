@@ -38,11 +38,13 @@ const (
 	// SealosShimSock is the CRI socket the shim listens on.
 	SealosShimSock            = "/var/run/image-cri-shim.sock"
 	DefaultImageCRIShimConfig = "/etc/image-cri-shim.yaml"
+	proxyDomain               = "dockerproxy.com"
 )
 
 type Registry struct {
 	Address string `json:"address"`
 	Auth    string `json:"auth"`
+	Forbid  string `json:"forbid"`
 }
 
 type Config struct {
@@ -58,6 +60,7 @@ type Config struct {
 
 type ShimAuthConfig struct {
 	CRIConfigs        map[string]types2.AuthConfig `json:"-"`
+	ProxyCRIConfigs   map[string]types2.AuthConfig `json:"-"`
 	OfflineCRIConfigs map[string]types2.AuthConfig `json:"-"`
 }
 
@@ -102,7 +105,7 @@ func (c *Config) PreProcess() (*ShimAuthConfig, error) {
 		//cri registry auth
 		criAuth := make(map[string]types2.AuthConfig)
 		for _, registry := range c.Registries {
-			if registry.Address == "" {
+			if registry.Address == "" || registry.Forbid != "" || strings.HasSuffix(domain, proxyDomain) {
 				continue
 			}
 			name, passwd := splitNameAndPasswd(registry.Auth)
@@ -120,9 +123,29 @@ func (c *Config) PreProcess() (*ShimAuthConfig, error) {
 	}
 
 	{
+		//proxy registry auth
+		proxyAuth := make(map[string]types2.AuthConfig)
+		proxyAuth[proxyDomain] = types2.AuthConfig{
+			Username:      "",
+			Password:      "",
+			ServerAddress: "https://" + proxyDomain,
+		}
+		for _, name := range []string{"gcr", "ghcr", "k8s", "mcr", "quay"} {
+			domain = name + "." + proxyDomain
+			proxyAuth[domain] = types2.AuthConfig{
+				Username:      "",
+				Password:      "",
+				ServerAddress: "https://" + domain,
+			}
+		}
+		shimAuth.ProxyCRIConfigs = proxyAuth
+		logger.Info("criProxyAuth: %+v", shimAuth.ProxyCRIConfigs)
+	}
+
+	{
 		offlineName, offlinePasswd := splitNameAndPasswd(c.Auth)
 		//offline registry auth
-		shimAuth.OfflineCRIConfigs = map[string]types2.AuthConfig{domain: {
+		shimAuth.OfflineCRIConfigs = map[string]types2.AuthConfig{rawURL.Host: {
 			Username:      offlineName,
 			Password:      offlinePasswd,
 			ServerAddress: c.Address,
