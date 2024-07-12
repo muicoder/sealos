@@ -27,6 +27,7 @@ import (
 	dockertype "github.com/docker/docker/api/types"
 	"google.golang.org/grpc"
 	k8sv1api "k8s.io/cri-api/pkg/apis/runtime/v1"
+	k8sv1alpha2api "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
 	"github.com/labring/sealos/pkg/utils/logger"
 	netutil "github.com/labring/sealos/pkg/utils/net"
@@ -43,8 +44,9 @@ type Options struct {
 	// Mode is the permission mode bits for our gRPC socket.
 	Mode os.FileMode
 	//CRIConfigs is cri config for auth
-	CRIConfigs        map[string]dockertype.AuthConfig
-	OfflineCRIConfigs map[string]dockertype.AuthConfig
+	CRIConfigs         map[string]dockertype.AuthConfig
+	ProxyCRIConfigs    map[string]dockertype.AuthConfig
+	InternalCRIConfigs map[string]dockertype.AuthConfig
 }
 
 type Server interface {
@@ -60,15 +62,16 @@ type Server interface {
 }
 
 type server struct {
-	server        *grpc.Server
-	imageV1Client k8sv1api.ImageServiceClient
-	options       Options
-	listener      net.Listener // socket our gRPC server listens on
+	server              *grpc.Server
+	imageV1Alpha2Client k8sv1alpha2api.ImageServiceClient
+	imageV1Client       k8sv1api.ImageServiceClient
+	options             Options
+	listener            net.Listener // socket our gRPC server listens on
 }
 
 // RegisterImageService registers an image service with the server.
 func (s *server) RegisterImageService(conn *grpc.ClientConn) error {
-	if s.imageV1Client != nil {
+	if s.imageV1Alpha2Client != nil && s.imageV1Client != nil {
 		return serverError("can't register image service, already registered")
 	}
 
@@ -79,9 +82,17 @@ func (s *server) RegisterImageService(conn *grpc.ClientConn) error {
 	}
 
 	k8sv1api.RegisterImageServiceServer(s.server, &v1ImageService{
-		imageClient:       s.imageV1Client,
-		CRIConfigs:        s.options.CRIConfigs,
-		OfflineCRIConfigs: s.options.OfflineCRIConfigs,
+		imageClient:        s.imageV1Client,
+		CRIConfigs:         s.options.CRIConfigs,
+		ProxyCRIConfigs:    s.options.ProxyCRIConfigs,
+		InternalCRIConfigs: s.options.InternalCRIConfigs,
+	})
+
+	k8sv1alpha2api.RegisterImageServiceServer(s.server, &v1alpha2ImageService{
+		imageClient:        s.imageV1Alpha2Client,
+		CRIConfigs:         s.options.CRIConfigs,
+		ProxyCRIConfigs:    s.options.ProxyCRIConfigs,
+		InternalCRIConfigs: s.options.InternalCRIConfigs,
 	})
 
 	return nil
@@ -209,5 +220,6 @@ func serverError(format string, args ...interface{}) error {
 }
 
 func (s *server) setupImageServiceClients(conn *grpc.ClientConn) {
+	s.imageV1Alpha2Client = k8sv1alpha2api.NewImageServiceClient(conn)
 	s.imageV1Client = k8sv1api.NewImageServiceClient(conn)
 }

@@ -21,7 +21,7 @@ const (
 const TemplateSuffix = ".tmpl"
 
 const (
-	LvsCareStaticPodName    = "kube-sealos-lvscare"
+	LvsCareStaticPodName    = "kube-lvscare"
 	YamlFileSuffix          = "yaml"
 	DefaultRegistryDomain   = "sealos.hub"
 	DefaultRegistryUsername = "admin"

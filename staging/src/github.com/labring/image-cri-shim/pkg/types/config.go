@@ -18,6 +18,7 @@ package types
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"strings"
 	"time"
@@ -43,6 +44,7 @@ const (
 type Registry struct {
 	Address string `json:"address"`
 	Auth    string `json:"auth"`
+	Forbid  string `json:"forbid"`
 }
 
 type Config struct {
@@ -53,17 +55,30 @@ type Config struct {
 	Debug           bool            `json:"debug"`
 	Timeout         metav1.Duration `json:"timeout"`
 	Auth            string          `json:"auth"`
+	ProxyDomain     string          `json:"proxyDomain"`
+	ProxyPrefix     []string        `json:"proxyPrefix"`
 	Registries      []Registry      `json:"registries"`
 }
 
 type ShimAuthConfig struct {
-	CRIConfigs        map[string]types2.AuthConfig `json:"-"`
-	OfflineCRIConfigs map[string]types2.AuthConfig `json:"-"`
+	CRIConfigs         map[string]types2.AuthConfig `json:"-"`
+	ProxyCRIConfigs    map[string]types2.AuthConfig `json:"-"`
+	InternalCRIConfigs map[string]types2.AuthConfig `json:"-"`
 }
 
 func (c *Config) PreProcess() (*ShimAuthConfig, error) {
 	if c.ImageShimSocket == "" {
 		c.ImageShimSocket = SealosShimSock
+	}
+	if c.Address == "" {
+		c.Address = fmt.Sprintf("https://%shub.open%s.cn", "atom", "atom")
+		c.Auth = ""
+	}
+	if c.ProxyDomain == "" {
+		c.ProxyDomain = fmt.Sprintf("m.%s%s.io", "dao", "cloud")
+	}
+	if len(c.ProxyPrefix) == 0 && c.ProxyDomain == fmt.Sprintf("m.%s%s.io", "dao", "cloud") {
+		c.ProxyPrefix = []string{"gcr", "k8s-gcr", "k8s", "quay"}
 	}
 	logger.Info("shim-socket: %s", c.ImageShimSocket)
 	logger.Info("cri-socket: %s", c.RuntimeSocket)
@@ -102,7 +117,7 @@ func (c *Config) PreProcess() (*ShimAuthConfig, error) {
 		//cri registry auth
 		criAuth := make(map[string]types2.AuthConfig)
 		for _, registry := range c.Registries {
-			if registry.Address == "" {
+			if registry.Address == "" || registry.Forbid != "" || strings.HasSuffix(domain, c.ProxyDomain) {
 				continue
 			}
 			name, passwd := splitNameAndPasswd(registry.Auth)
@@ -118,16 +133,47 @@ func (c *Config) PreProcess() (*ShimAuthConfig, error) {
 		shimAuth.CRIConfigs = criAuth
 		logger.Info("criRegistryAuth: %+v", shimAuth.CRIConfigs)
 	}
+	{
+		//proxy registry auth
+		proxyAuth := make(map[string]types2.AuthConfig)
+		proxyAuth[c.ProxyDomain] = types2.AuthConfig{
+			Username:      "",
+			Password:      "",
+			ServerAddress: "https://" + c.ProxyDomain,
+		}
+		for _, name := range c.ProxyPrefix {
+			domain = name + "." + c.ProxyDomain
+			proxyAuth[domain] = types2.AuthConfig{
+				Username:      "",
+				Password:      "",
+				ServerAddress: "https://" + domain,
+			}
+		}
+		domain = fmt.Sprintf("%s-edu-cn.mirror.%s.com", "ustc", "aliyuncs")
+		proxyAuth[domain] = types2.AuthConfig{
+			Username:      "",
+			Password:      "",
+			ServerAddress: "https://" + domain,
+		}
+		domain = fmt.Sprintf("%s.io", "huecker")
+		proxyAuth[domain] = types2.AuthConfig{
+			Username:      "",
+			Password:      "",
+			ServerAddress: "https://" + domain,
+		}
+		shimAuth.ProxyCRIConfigs = proxyAuth
+		logger.Info("criProxyAuth: %+v", shimAuth.ProxyCRIConfigs)
+	}
 
 	{
 		offlineName, offlinePasswd := splitNameAndPasswd(c.Auth)
 		//offline registry auth
-		shimAuth.OfflineCRIConfigs = map[string]types2.AuthConfig{domain: {
+		shimAuth.InternalCRIConfigs = map[string]types2.AuthConfig{rawURL.Host: {
 			Username:      offlineName,
 			Password:      offlinePasswd,
 			ServerAddress: c.Address,
 		}}
-		logger.Info("criOfflineAuth: %+v", shimAuth.OfflineCRIConfigs)
+		logger.Info("criInternalAuth: %+v", shimAuth.InternalCRIConfigs)
 	}
 
 	if c.Address == "" {

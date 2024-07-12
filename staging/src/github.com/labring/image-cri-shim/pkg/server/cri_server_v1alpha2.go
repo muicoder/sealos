@@ -23,19 +23,19 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/name"
 
-	api "k8s.io/cri-api/pkg/apis/runtime/v1"
+	api "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
 	"github.com/labring/sealos/pkg/utils/logger"
 )
 
-type v1ImageService struct {
+type v1alpha2ImageService struct {
 	imageClient        api.ImageServiceClient
 	CRIConfigs         map[string]types.AuthConfig
 	ProxyCRIConfigs    map[string]types.AuthConfig
 	InternalCRIConfigs map[string]types.AuthConfig
 }
 
-func ToV1AuthConfig(c *types.AuthConfig) *api.AuthConfig {
+func ToV1Alpha2AuthConfig(c *types.AuthConfig) *api.AuthConfig {
 	return &api.AuthConfig{
 		Username:      c.Username,
 		Password:      c.Password,
@@ -46,7 +46,7 @@ func ToV1AuthConfig(c *types.AuthConfig) *api.AuthConfig {
 	}
 }
 
-func (s *v1ImageService) ListImages(ctx context.Context,
+func (s *v1alpha2ImageService) ListImages(ctx context.Context,
 	req *api.ListImagesRequest) (*api.ListImagesResponse, error) {
 	logger.Debug("ListImages: %+v", req)
 	rsp, err := s.imageClient.ListImages(ctx, req)
@@ -58,7 +58,7 @@ func (s *v1ImageService) ListImages(ctx context.Context,
 	return rsp, err
 }
 
-func (s *v1ImageService) ImageStatus(ctx context.Context,
+func (s *v1alpha2ImageService) ImageStatus(ctx context.Context,
 	req *api.ImageStatusRequest) (*api.ImageStatusResponse, error) {
 	logger.Debug("ImageStatus: %+v", req)
 	if req.Image != nil {
@@ -77,21 +77,21 @@ func (s *v1ImageService) ImageStatus(ctx context.Context,
 	return rsp, err
 }
 
-func (s *v1ImageService) PullImage(ctx context.Context,
+func (s *v1alpha2ImageService) PullImage(ctx context.Context,
 	req *api.PullImageRequest) (*api.PullImageResponse, error) {
 	logger.Debug("PullImage begin: %+v", req)
+	//1. sealos.hub
+	//2. sealos login remote registry
+	//3. kubernetes secret
 	if req.Image != nil {
-		imageName, ok, auth := replaceImage(req.Image.Image, "InternalImage", s.InternalCRIConfigs)
-		if !ok {
-			imageName, ok, auth = replaceImage(req.Image.Image, "PullImage", s.CRIConfigs)
-		}
+		imageName, ok, auth := replaceImage(req.Image.Image, "PullImage", s.InternalCRIConfigs)
 		if ok {
-			req.Auth = ToV1AuthConfig(auth)
+			req.Auth = ToV1Alpha2AuthConfig(auth)
 		} else {
 			if req.Auth == nil {
 				ref, _ := name.ParseReference(imageName)
 				if v, ok := s.CRIConfigs[ref.Context().RegistryStr()]; ok {
-					req.Auth = ToV1AuthConfig(&v)
+					req.Auth = ToV1Alpha2AuthConfig(&v)
 				}
 			}
 		}
@@ -100,23 +100,13 @@ func (s *v1ImageService) PullImage(ctx context.Context,
 	logger.Debug("PullImage after: %+v", req)
 	rsp, err := s.imageClient.PullImage(ctx, req)
 	if err != nil {
-		imageName, ok, auth := replaceImage(req.Image.Image, "ProxyImage", s.ProxyCRIConfigs)
-		if ok {
-			req.Image.Image = imageName
-			req.Auth = ToV1AuthConfig(auth)
-			rsp, err = s.imageClient.PullImage(ctx, req)
-			if err != nil {
-				return nil, err
-			}
-			return rsp, err
-		}
 		return nil, err
 	}
 
 	return rsp, err
 }
 
-func (s *v1ImageService) RemoveImage(ctx context.Context,
+func (s *v1alpha2ImageService) RemoveImage(ctx context.Context,
 	req *api.RemoveImageRequest) (*api.RemoveImageResponse, error) {
 	logger.Debug("RemoveImage: %+v", req)
 	if req.Image != nil {
@@ -135,7 +125,7 @@ func (s *v1ImageService) RemoveImage(ctx context.Context,
 	return rsp, err
 }
 
-func (s *v1ImageService) ImageFsInfo(ctx context.Context,
+func (s *v1alpha2ImageService) ImageFsInfo(ctx context.Context,
 	req *api.ImageFsInfoRequest) (*api.ImageFsInfoResponse, error) {
 	logger.Debug("ImageFsInfo: %+v", req)
 	rsp, err := s.imageClient.ImageFsInfo(ctx, req)
@@ -147,7 +137,7 @@ func (s *v1ImageService) ImageFsInfo(ctx context.Context,
 	return rsp, err
 }
 
-func (s *v1ImageService) GetImageRefByID(ctx context.Context, image string) (string, error) {
+func (s *v1alpha2ImageService) GetImageRefByID(ctx context.Context, image string) (string, error) {
 	resp, err := s.imageClient.ImageStatus(ctx, &api.ImageStatusRequest{
 		Image: &api.ImageSpec{
 			Image: image,

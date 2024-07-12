@@ -6,14 +6,14 @@ require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Masterminds/sprig/v3 v3.2.3
-	github.com/containerd/containerd v1.7.2
+	github.com/containerd/containerd v1.7.19
 	github.com/containers/buildah v1.30.0
 	github.com/containers/common v0.53.0
 	github.com/containers/image/v5 v5.25.1-0.20230605120906-abe51339f34d
 	github.com/containers/ocicrypt v1.1.7
 	github.com/containers/storage v1.50.2
 	github.com/davecgh/go-spew v1.1.1
-	github.com/docker/docker v24.0.2+incompatible
+	github.com/docker/docker v24.0.9+incompatible
 	github.com/docker/go-units v0.5.0
 	github.com/emicklei/go-restful/v3 v3.10.1
 	github.com/emirpasic/gods v1.18.1
@@ -186,8 +186,8 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
-	github.com/opencontainers/runc v1.1.9 // indirect
-	github.com/opencontainers/runtime-spec v1.1.0 // indirect
+	github.com/opencontainers/runc v1.1.13 // indirect
+	github.com/opencontainers/runtime-spec v1.2.0 // indirect
 	github.com/opencontainers/runtime-tools v0.9.1-0.20230317050512-e931285f4b69 // indirect
 	github.com/opencontainers/selinux v1.11.0 // indirect
 	github.com/openshift/imagebuilder v1.2.4-0.20230309135844-a3c3f8358ca3 // indirect
